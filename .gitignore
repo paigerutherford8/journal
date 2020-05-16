@@ -1,0 +1,13 @@
+# IntelliJ/Java
+/.idea/
+/out/
+*.jar
+*.war
+*.ear
+
+# Gradle
+/.gradle/
+/build/
+gradle-app.setting
+!gradle-wrapper.jar
+.gradletasknamecache

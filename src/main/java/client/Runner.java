@@ -1,8 +1,12 @@
 package client;
 
+import org.apache.commons.cli.*;
+
 import java.io.File;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 
 class Runner {
 
@@ -25,7 +29,12 @@ class Runner {
         this.processUtils = processUtils;
     }
 
-    void run() {
+    void run(String[] args) throws ParseException {
+        Options options = new Options();
+        options.addOption("d", "date", true, "date of entry to display/edit");
+        CommandLineParser parser = new DefaultParser();
+        CommandLine cmd = parser.parse(options, args);
+
         // Create journal directory if not already present
         File file = new File(directory);
         if (!file.exists()) {
@@ -37,13 +46,29 @@ class Runner {
         // Switch to alternate screen buffer
         String altBuff = "tput smcup";
         processUtils.executeProcess(new String[] {"bash", "-c", altBuff});
-        // Open editor
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyyMMdd");
-        processUtils.executeProcess(new String[] {editor, directory + dtf.format(dateTime) + ".txt"});
+
+        DateTimeFormatter fileFormat = DateTimeFormatter.ofPattern("yyyyMMdd");
+        if (cmd.hasOption("d") && stringToDate(cmd.getOptionValue("d")).equals(dateTime.toLocalDate())
+                || !cmd.hasOption("d")) {
+            // Open editor for current entry
+            processUtils.executeProcess(new String[] {editor, directory + fileFormat.format(dateTime) + ".txt"});
+        } else {
+            // View entry for requested date
+            processUtils.executeProcess(new String[] {"less", directory + fileFormat.format(dateTime) + ".txt"});
+        }
+
         // Return to normal screen buffer
         String normBuff = "tput rmcup";
         processUtils.executeProcess(new String[] {"bash", "-c", normBuff});
+
         // Exit gracefully
         System.exit(0);
     }
+
+    private LocalDate stringToDate(String s) {
+        s += "/" + dateTime.getYear();
+        DateTimeFormatter stringFormat = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        return LocalDate.parse(s, stringFormat);
+    }
+
 }

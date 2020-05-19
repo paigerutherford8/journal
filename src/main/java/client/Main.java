@@ -1,5 +1,6 @@
 package client;
 
+import org.apache.commons.cli.ParseException;
 import java.time.LocalDateTime;
 
 public class Main {
@@ -10,6 +11,10 @@ public class Main {
         LocalDateTime dateTime = LocalDateTime.now();
         ProcessUtils processUtils = ProcessUtils.getInstance();
 
-        Runner.createInstance(directory, editor, dateTime, processUtils).run();
+        try {
+            Runner.createInstance(directory, editor, dateTime, processUtils).run(args);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 }

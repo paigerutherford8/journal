@@ -1,5 +1,6 @@
 package client;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -11,6 +12,9 @@ class Runner {
     private ProcessUtils processUtils;
 
     static Runner createInstance(String directory, String editor, LocalDateTime dateTime, ProcessUtils processUtils) {
+        if (!directory.endsWith("/")) {
+            directory += "/";
+        }
         return new Runner(directory, editor, dateTime, processUtils);
     }
 
@@ -23,8 +27,13 @@ class Runner {
 
     void run() {
         // Create journal directory if not already present
-        String mkdir = "mkdir " + directory;
-        processUtils.executeProcess(new String[] {"bash", "-c", mkdir});
+        File file = new File(directory);
+        if (!file.exists()) {
+            if (!file.mkdir()) {
+                System.out.println("Could not create application directory");
+            }
+        }
+
         // Switch to alternate screen buffer
         String altBuff = "tput smcup";
         processUtils.executeProcess(new String[] {"bash", "-c", altBuff});

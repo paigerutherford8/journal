@@ -2,67 +2,45 @@ package client;
 
 import org.apache.commons.cli.*;
 
-import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
+import java.util.Optional;
 
 class Runner {
 
-    private String directory;
-    private String editor;
+    private LocalStorage localStorage;
+    private Terminal terminal;
     private LocalDateTime dateTime;
-    private ProcessUtils processUtils;
 
-    static Runner createInstance(String directory, String editor, LocalDateTime dateTime, ProcessUtils processUtils) {
-        if (!directory.endsWith("/")) {
-            directory += "/";
-        }
-        return new Runner(directory, editor, dateTime, processUtils);
+    static Runner createInstance(LocalStorage localStorage, Terminal terminal, LocalDateTime dateTime) {
+        return new Runner(localStorage, terminal, dateTime);
     }
 
-    private Runner(String directory, String editor, LocalDateTime dateTime, ProcessUtils processUtils) {
-        this.directory = directory;
-        this.editor = editor;
+    private Runner(LocalStorage localStorage, Terminal terminal, LocalDateTime dateTime) {
+        this.localStorage = localStorage;
+        this.terminal = terminal;
         this.dateTime = dateTime;
-        this.processUtils = processUtils;
     }
 
     void run(String[] args) throws ParseException {
+        CommandLine cmd = parse(args);
+        LocalDate currentDate = dateTime.toLocalDate();
+        Optional<LocalDate> enteredDate = cmd.hasOption("d")
+                ? Optional.of(stringToDate(cmd.getOptionValue("d")))
+                : Optional.empty();
+        if (enteredDate.isEmpty() || enteredDate.get().equals(currentDate)) {
+            terminal.editFile(localStorage.getFileForEntry(currentDate));
+        } else if (localStorage.hasEntry(enteredDate.get())) {
+            terminal.viewFile(localStorage.getFileForEntry(enteredDate.get()));
+        }
+    }
+
+    private CommandLine parse(String[] args) throws ParseException {
         Options options = new Options();
         options.addOption("d", "date", true, "date of entry to display/edit");
         CommandLineParser parser = new DefaultParser();
-        CommandLine cmd = parser.parse(options, args);
-
-        // Create journal directory if not already present
-        File file = new File(directory);
-        if (!file.exists()) {
-            if (!file.mkdir()) {
-                System.out.println("Could not create application directory");
-            }
-        }
-
-        // Switch to alternate screen buffer
-        String altBuff = "tput smcup";
-        processUtils.executeProcess(new String[] {"bash", "-c", altBuff});
-
-        DateTimeFormatter fileFormat = DateTimeFormatter.ofPattern("yyyyMMdd");
-        if (cmd.hasOption("d") && stringToDate(cmd.getOptionValue("d")).equals(dateTime.toLocalDate())
-                || !cmd.hasOption("d")) {
-            // Open editor for current entry
-            processUtils.executeProcess(new String[] {editor, directory + fileFormat.format(dateTime) + ".txt"});
-        } else {
-            // View entry for requested date
-            processUtils.executeProcess(new String[] {"less", directory + fileFormat.format(dateTime) + ".txt"});
-        }
-
-        // Return to normal screen buffer
-        String normBuff = "tput rmcup";
-        processUtils.executeProcess(new String[] {"bash", "-c", normBuff});
-
-        // Exit gracefully
-        System.exit(0);
+        return parser.parse(options, args);
     }
 
     private LocalDate stringToDate(String s) {
